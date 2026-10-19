@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMode {
+  UPI
+  CASH
+  BANK_TRANSFER
+  CHEQUE
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum PaymentType {
+  ADVANCE
+  PROJECT_PAYMENT
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Client {
+  id        String    @id @default(cuid())
+  name      String
+  mobile    String
+  address   String?
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  projects  Project[]
+  payments  Payment[]
+}
+
+model Project {
+  id                   String        @id @default(cuid())
+  clientId             String
+  name                 String
+  details              String?
+  technologies         String?
+  description          String?
+  maintenanceCharge    Decimal       @default(0) @db.Decimal(12, 2)
+  maintenanceStartDate DateTime?
+  totalAmount          Decimal       @default(0) @db.Decimal(12, 2)
+  completionDate       DateTime?
+  status               ProjectStatus @default(PLANNING)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  client               Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  payments             Payment[]
+  renewals              Renewal[]
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  projectId   String
+  clientId    String
+  amount      Decimal       @db.Decimal(12, 2)
+  paymentDate DateTime      @default(now())
+  mode        PaymentMode
+  type        PaymentType   @default(PROJECT_PAYMENT)
+  status      PaymentStatus @default(PENDING)
+  notes       String?
+  proofUrl    String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([clientId])
+  @@index([status])
+  @@index([type])
+}
+
+model Setting {
+  id          String   @id @default("default")
+  companyName String   @default("My Business")
+  upiId       String   @default("")
+  payeeName   String   @default("My Business")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model MarketingTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+model Renewal {
+  id          String   @id @default(cuid())
+  projectId   String
+  serviceName String
+  renewalDate DateTime
+  amount      Decimal  @default(0) @db.Decimal(12, 2)
+  status      String   @default("UPCOMING")
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([renewalDate])
+  @@index([status])
+}
